@@ -81,15 +81,12 @@ ggplot(result, aes(time, C))+geom_point()
 
 # extra our metrics of interest  from this
 # maximum population it gets to
-maxpop = max(result$C)
-maxpop
+maxsize = max(result$C)
+maxsize
 
-# years required to get to the maximum poputation
-# which.max will tell us when max population occur
-idx = which.max(result$C)
-# turn this index into a year (might be the same if time step in 1 but just in case it isn't)
-maxyear = result$time[idx]
-maxyear
+# mean population
+meansize = mean(result$C)
+meansize
 ```
 
 # Compute our metric for all the parameter sets
@@ -105,10 +102,9 @@ Lets create two additional functions that will help us
 # turn computing our metrics into a function
 
 compute_metrics = function(result) {
-  maxpop = max(result$C)
-idx = which.max(result$C)
-maxyear = result$time[idx]
-return(list(maxpop=maxpop, maxyear=maxyear))}
+  maxsize = max(result$C)
+  meansize = mean(result$C)
+return(list(maxsize=maxsize, meansize=meansize))}
 
 # try it on our first parameter set
 compute_metrics(result)
@@ -133,7 +129,7 @@ p_wrapper = function(r, K, g, thresh, Cinitial, simtimes, func) {
 allresults = as.data.frame(sens_C$X) %>% pmap(p_wrapper, Cinitial=Cinitial, simtimes=simtimes, func=treegrowthcalc)
 
 # extract out results from pmap into a data frame
-allres = allresults %>% map_dfr(`[`,c("maxpop","maxyear"))
+allres = allresults %>% map_dfr(`[`,c("maxsize","meansize"))
 
 
 # create boxplots
@@ -146,24 +142,24 @@ Compute the sobol indicies for each metric
 ```{r sen3}
 # sobol can only handle one output at a time  - so we will need to do them separately
 
-sens_C_maxpop = sensitivity::tell(sens_C,allres$maxpop)
+sens_C_maxsize = sensitivity::tell(sens_C,allres$maxsize)
 
 # first-order indices (main effect without co-variance)
-sens_C_maxpop$S
+sens_C_maxsize$S
 
 # total sensitivity index -note that this partitions the output variance - so values sum to 1
-sens_C_maxpop$T
+sens_C_maxsize$T
 
 
 
 
 # create another one for max year
-sens_C_maxyear = sensitivity::tell(sens_C,allres$maxyear)
+sens_C_meansize = sensitivity::tell(sens_C,allres$meansize)
 # first-order indices (main effect without co-variance)
-sens_C_maxyear$S
+sens_C_meansize$S
 
 # total sensitivity index -note that this partitions the output variance - so values sum to 1
-sens_C_maxyear$T
+sens_C_meansize$T
 
 ```
 
