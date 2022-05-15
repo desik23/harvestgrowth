@@ -1,0 +1,166 @@
+---
+title: "Tree growth"
+output: html_document
+author: Elmera Azadpour, Grace Lewin and Desik Somasundaram
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(deSolve)
+library(sensitivity)
+```
+
+
+```{r sen}
+source("../R/treegrowthcalc.R")
+
+treegrowthcalc
+
+# lets start with sobel 
+library(sensitivity)
+
+# come up with first set of sample parameters
+# we will assume that we know the initial population,
+
+Cinitial=10
+thresh = 50
+# want to learn about sensitivity to growth rate (r) and carrying capacity 
+# set the number of parameters
+np=100
+K = rnorm(mean=250, sd=25, n=np)
+r = rnorm(mean=0.01, sd=0.001, n=np)
+g = rnorm(mean=2, sd=0.2, n=np)
+X1 = cbind.data.frame(r=r, K=K, g=g)
+
+# repeat to get our second set of samples
+K = rnorm(mean=250, sd=25, n=np)
+r = rnorm(mean=0.01, sd=0.001, n=np)
+g = rnorm(mean=2, sd=0.2, n=np)
+X2 = cbind.data.frame(r=r, K=K, g=g)
+
+# create our sobel object and get sets ofparameters for running the model
+
+sens_C = sobolSalt(model = NULL,X1, X2, nboot = 300)
+
+# our parameter sets are
+head(sens_C$X)
+
+# lets add names 
+colnames(sens_C$X) = c("r", "K", "g")
+
+# run our differential equation and keep the output
+# BUT
+# what output do we want  to keep
+# how about maximum population if we run the model for 200 years, and how many years to get to the carrying capacity
+
+# for illustration lets look at running just one parameter sets and summarizing results
+sens_C$X[1,]
+# recall ODE needs ALL of our parameters in a single list 
+# initial population and times for which we want output 
+Cinitial
+
+# gets results for 200 years (evaluating every year)
+simtimes = seq(from=1, to=300)
+parms = list(r=sens_C$X[1,"r"], K=sens_C$X[1,"K"], g=sens_C$X[1,"g"])
+
+# or
+#parms = list(r=as.data.frame(sens_C$X)$r[1], K=as.data.frame(sens_C$X)$K[1], g=as.data.frame(sens_C$X)$g[1])
+
+result = ode(y=Pinitial, times=simtimes, func=dexppop_play, parms=parms)
+
+head(result)
+colnames(result)=c("time","C")
+# turn it into a data frame
+result = as.data.frame(result)
+ggplot(result, aes(time, C))+geom_point()
+
+# extra our metrics of interest  from this
+# maximum population it gets to
+maxpop = max(result$C)
+maxpop
+
+# years required to get to the maximum poputation
+# which.max will tell us when max population occur
+idx = which.max(result$C)
+# turn this index into a year (might be the same if time step in 1 but just in case it isn't)
+maxyear = result$time[idx]
+maxyear
+```
+
+# Compute our metric for all the parameter sets
+
+What if we want to run for all parameters
+
+Lets create two additional functions that will help us
+
+* a function that computes the metrics we want
+
+* a function that runs our ode solver and computes the metrics (I call it a wrapper function as it is really just a workflow/wrapper to call ode solver and then compute metrics)
+```{r sen2}
+# turn computing our metrics into a function
+
+compute_metrics = function(result) {
+  maxpop = max(result$C)
+idx = which.max(result$C)
+maxyear = result$time[idx]
+return(list(maxpop=maxpop, maxyear=maxyear))}
+
+# try it on our first parameter set
+compute_metrics(result)
+
+# great but we need to apply the ode and this function for all of our parameters
+
+
+
+# define a wrapper function to do everything we need - run solver and compute metrics - and send back results for each parameter
+
+p_wrapper = function(r, K, g, thresh, Cinitial, simtimes, func) {
+    parms = list(r=r, K=K, g=g)
+    result = ode(y=Cinitial, times=simtimes, func=func, parms=parms, method="daspk") 
+    colnames(result)=c("time","P")
+  # get metrics
+  metrics=compute_metrics(as.data.frame(result))
+  return(metrics)
+}
+
+# now use pmap as we did before
+
+allresults = as.data.frame(sens_C$X) %>% pmap(p_wrapper, Cinitial=Pinitial, simtimes=simtimes, func=treegrowthcalc)
+
+# extract out results from pmap into a data frame
+allres = allresults %>% map_dfr(`[`,c("maxpop","maxyear"))
+
+
+# create boxplots
+tmp = allres %>% gather(key="metric", value="value")
+ggplot(tmp, aes(metric, value, col=metric))+geom_boxplot()
+```
+
+Compute the sobol indicies for each metric
+
+```{r sen3}
+# sobol can only handle one output at a time  - so we will need to do them separately
+
+sens_C_maxpop = sensitivity::tell(sens_C,allres$maxpop)
+
+# first-order indices (main effect without co-variance)
+sens_C_maxpop$S
+
+# total sensitivity index -note that this partitions the output variance - so values sum to 1
+sens_C_maxpop$T
+
+
+
+
+# create another one for max year
+sens_P_maxyear = sensitivity::tell(sens_P,allres$maxyear)
+# first-order indices (main effect without co-variance)
+sens_P_maxyear$S
+
+# total sensitivity index -note that this partitions the output variance - so values sum to 1
+sens_P_maxyear$T
+
+```
+
