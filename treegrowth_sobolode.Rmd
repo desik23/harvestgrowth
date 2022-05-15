@@ -10,11 +10,12 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(deSolve)
 library(sensitivity)
+library(here)
 ```
 
 
 ```{r sen}
-source("../R/treegrowthcalc.R")
+source(here("R", "treegrowthcalc.R"))
 
 treegrowthcalc
 
@@ -32,13 +33,15 @@ np=100
 K = rnorm(mean=250, sd=25, n=np)
 r = rnorm(mean=0.01, sd=0.001, n=np)
 g = rnorm(mean=2, sd=0.2, n=np)
-X1 = cbind.data.frame(r=r, K=K, g=g)
+thresh = thresh
+X1 = cbind.data.frame(r=r, K=K, g=g, thresh=thresh)
 
 # repeat to get our second set of samples
 K = rnorm(mean=250, sd=25, n=np)
 r = rnorm(mean=0.01, sd=0.001, n=np)
 g = rnorm(mean=2, sd=0.2, n=np)
-X2 = cbind.data.frame(r=r, K=K, g=g)
+thresh = thresh
+X2 = cbind.data.frame(r=r, K=K, g=g, thresh=thresh)
 
 # create our sobel object and get sets ofparameters for running the model
 
@@ -48,7 +51,7 @@ sens_C = sobolSalt(model = NULL,X1, X2, nboot = 300)
 head(sens_C$X)
 
 # lets add names 
-colnames(sens_C$X) = c("r", "K", "g")
+colnames(sens_C$X) = c("r", "K", "g", "thresh")
 
 # run our differential equation and keep the output
 # BUT
@@ -63,12 +66,12 @@ Cinitial
 
 # gets results for 200 years (evaluating every year)
 simtimes = seq(from=1, to=300)
-parms = list(r=sens_C$X[1,"r"], K=sens_C$X[1,"K"], g=sens_C$X[1,"g"])
+parms = list(r=sens_C$X[1,"r"], K=sens_C$X[1,"K"], g=sens_C$X[1,"g"], thresh=sens_C$X[1,"thresh"])
 
 # or
 #parms = list(r=as.data.frame(sens_C$X)$r[1], K=as.data.frame(sens_C$X)$K[1], g=as.data.frame(sens_C$X)$g[1])
 
-result = ode(y=Pinitial, times=simtimes, func=dexppop_play, parms=parms)
+result = ode(y=Cinitial, times=simtimes, func=treegrowthcalc, parms=parms)
 
 head(result)
 colnames(result)=c("time","C")
@@ -117,9 +120,9 @@ compute_metrics(result)
 # define a wrapper function to do everything we need - run solver and compute metrics - and send back results for each parameter
 
 p_wrapper = function(r, K, g, thresh, Cinitial, simtimes, func) {
-    parms = list(r=r, K=K, g=g)
+    parms = list(r=r, K=K, g=g, thresh=thresh)
     result = ode(y=Cinitial, times=simtimes, func=func, parms=parms, method="daspk") 
-    colnames(result)=c("time","P")
+    colnames(result)=c("time","C")
   # get metrics
   metrics=compute_metrics(as.data.frame(result))
   return(metrics)
@@ -127,7 +130,7 @@ p_wrapper = function(r, K, g, thresh, Cinitial, simtimes, func) {
 
 # now use pmap as we did before
 
-allresults = as.data.frame(sens_C$X) %>% pmap(p_wrapper, Cinitial=Pinitial, simtimes=simtimes, func=treegrowthcalc)
+allresults = as.data.frame(sens_C$X) %>% pmap(p_wrapper, Cinitial=Cinitial, simtimes=simtimes, func=treegrowthcalc)
 
 # extract out results from pmap into a data frame
 allres = allresults %>% map_dfr(`[`,c("maxpop","maxyear"))
@@ -155,12 +158,12 @@ sens_C_maxpop$T
 
 
 # create another one for max year
-sens_P_maxyear = sensitivity::tell(sens_P,allres$maxyear)
+sens_C_maxyear = sensitivity::tell(sens_C,allres$maxyear)
 # first-order indices (main effect without co-variance)
-sens_P_maxyear$S
+sens_C_maxyear$S
 
 # total sensitivity index -note that this partitions the output variance - so values sum to 1
-sens_P_maxyear$T
+sens_C_maxyear$T
 
 ```
 
