@@ -1,7 +1,9 @@
 ---
 title: "Tree growth"
-output: html_document
-author: Elmera Azadpour, Grace Lewin and Desik Somasundaram
+author: "Elmera Azadpour, Grace Lewin and Desik Somasundaram"
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -77,8 +79,14 @@ head(result)
 colnames(result)=c("time","C")
 # turn it into a data frame
 result = as.data.frame(result)
-ggplot(result, aes(time, C))+geom_point()
 
+ggplot(result, aes(time, C))+
+  geom_point(color = "dark green") +
+  labs(x = "Time (years)", y = "Size of forest (kg C)") +
+  theme_minimal() +
+  scale_x_continuous(breaks = seq(from = 0, to = 300, by = 50)) +
+scale_y_continuous(breaks = seq(from = 0, to = 250, by = 50))
+  
 # extra our metrics of interest  from this
 # maximum population it gets to
 maxsize = max(result$C)
@@ -134,7 +142,14 @@ allres = allresults %>% map_dfr(`[`,c("maxsize","meansize"))
 
 # create boxplots
 tmp = allres %>% gather(key="metric", value="value")
-ggplot(tmp, aes(metric, value, col=metric))+geom_boxplot()
+
+ggplot(tmp, aes(metric, value, col=metric))+
+  geom_boxplot() +
+  theme_minimal() + 
+  labs(x = "Metric", y = "Value") +
+  scale_x_discrete(labels = c("Max Size", "Mean Size")) +
+  theme(legend.position="none") +
+  scale_color_manual(values=c("darkblue", "darkgreen"))
 ```
 
 Compute the sobol indicies for each metric
@@ -144,14 +159,11 @@ Compute the sobol indicies for each metric
 
 sens_C_maxsize = sensitivity::tell(sens_C,allres$maxsize)
 
-# first-order indices (main effect without co-variance)
+# first-order indices (main effect without co-variance), note: order "r", "K", "g", "thresh" (X1-X4)
 sens_C_maxsize$S
 
 # total sensitivity index -note that this partitions the output variance - so values sum to 1
 sens_C_maxsize$T
-
-
-
 
 # create another one for max year
 sens_C_meansize = sensitivity::tell(sens_C,allres$meansize)
@@ -163,3 +175,6 @@ sens_C_meansize$T
 
 ```
 
+## Climate change impacts on forest growth
+- K is highly sentive under the total sensitivity index for max size. r and K are most sensitive under first-order indices for mean size. 
+- Climate change will influence the growth rate (r) of forests by influencing forest disturbance events such as wildfires, storms, pest and pathogen outbreaks, drought conditions, and more. Additionally, climate change will influence forest carbon cycling (GPP, NPP, etc.) leading to shifts in the carrying capacity of forest ecosystems. This will ultimately affect the productivity of forests, shifting resource management, economic processes, and forest product harvest. 
