@@ -8,12 +8,12 @@
 #' @return change in population
 #'
 treegrowthcalc = function(time, Cinitial, parms) {
-  if (Cinitial > parms$thresh) {
+  if (Cinitial < parms$thresh) {
     # compute rate of change of population using exp growth rate
     treegrowth = parms$r*Cinitial
-  } else if(Cinitial <= parms$thresh){
+  } else if(Cinitial >= parms$thresh){
     # compute rate of change of population using linear growth rate
-    treegrowth = parms$g*(1 - Cinitial/K)
+    treegrowth = parms$g*(1 - (Cinitial/K))
   }
     
 
