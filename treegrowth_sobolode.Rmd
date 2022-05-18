@@ -186,21 +186,44 @@ T_sens_C_maxsize <- sens_C_maxsize$T %>%
   mutate(parameter = c("r", "K", "g", "thresh"))
 
 
-S <- S_sens_C_maxsize %>%
+S_max <- S_sens_C_maxsize %>%
   ggplot(aes(original, parameter)) +
   geom_col(fill = "#A0C1B9") +
   labs(x = "Sobol Score",
        y = "Parameter",
        title = "Max Forest Size \nFirst Order Index")
 
-T <- T_sens_C_maxsize %>%
+T_max <- T_sens_C_maxsize %>%
   ggplot(aes(original, parameter)) +
   geom_col(fill = "#706993") +
   labs(x = "Sobol Score",
        y = "Parameter",
        title = "Max Forest Size \nTotal Sensitivity Index")
 
-S+T
+S_max+T_max
+```
+```{r}
+S_sens_C_meansize <- sens_C_meansize$S %>% 
+  mutate(parameter = c("r", "K", "g", "thresh"))
+
+T_sens_C_meansize <- sens_C_meansize$T %>% 
+  mutate(parameter = c("r", "K", "g", "thresh"))
+
+S_mean <- S_sens_C_meansize %>%
+  ggplot(aes(original, parameter)) +
+  geom_col(fill = "#3d405b") +
+  labs(x = "Sobol Score",
+       y = "Parameter",
+       title = "Mean Forest Size \nFirst Order Index")
+
+T_mean <- T_sens_C_meansize %>%
+  ggplot(aes(original, parameter)) +
+  geom_col(fill = "#e07a5f") +
+  labs(x = "Sobol Score",
+       y = "Parameter",
+       title = "Mean Forest Size \nTotal Sensitivity Index")
+
+S_mean+T_mean
 ```
 
 
