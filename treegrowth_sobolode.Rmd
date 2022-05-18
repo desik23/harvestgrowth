@@ -13,6 +13,7 @@ library(tidyverse)
 library(deSolve)
 library(sensitivity)
 library(here)
+library(patchwork)
 ```
 
 
@@ -87,7 +88,7 @@ ggplot(result, aes(time, C))+
   scale_x_continuous(breaks = seq(from = 0, to = 300, by = 50)) +
 scale_y_continuous(breaks = seq(from = 0, to = 250, by = 50))
   
-# extra our metrics of interest  from this
+# extra metrics of interest  from this
 # maximum population it gets to
 maxsize = max(result$C)
 maxsize
@@ -146,7 +147,7 @@ tmp = allres %>% gather(key="metric", value="value")
 ggplot(tmp, aes(metric, value, col=metric))+
   geom_boxplot() +
   theme_minimal() + 
-  labs(x = "Metric", y = "Value") +
+  labs(x = "Metric", y = "Forest Size (kg C)") +
   scale_x_discrete(labels = c("Max Size", "Mean Size")) +
   theme(legend.position="none") +
   scale_color_manual(values=c("darkblue", "darkgreen"))
@@ -165,7 +166,7 @@ sens_C_maxsize$S
 # total sensitivity index -note that this partitions the output variance - so values sum to 1
 sens_C_maxsize$T
 
-# create another one for max year
+# create another one for mean size
 sens_C_meansize = sensitivity::tell(sens_C,allres$meansize)
 # first-order indices (main effect without co-variance)
 sens_C_meansize$S
@@ -177,9 +178,30 @@ sens_C_meansize$T
 
 
 ```{r}
+#max forest size sobol indices
+S_sens_C_maxsize <- sens_C_maxsize$S %>% 
+  mutate(parameter = c("r", "K", "g", "thresh"))
 
+T_sens_C_maxsize <- sens_C_maxsize$T %>% 
+  mutate(parameter = c("r", "K", "g", "thresh"))
+
+
+S <- S_sens_C_maxsize %>%
+  ggplot(aes(original, parameter)) +
+  geom_col(fill = "#A0C1B9") +
+  labs(x = "Sobol Score",
+       y = "Parameter",
+       title = "Max Forest Size \nFirst Order Index")
+
+T <- T_sens_C_maxsize %>%
+  ggplot(aes(original, parameter)) +
+  geom_col(fill = "#706993") +
+  labs(x = "Sobol Score",
+       y = "Parameter",
+       title = "Max Forest Size \nTotal Sensitivity Index")
+
+S+T
 ```
-
 
 
 
